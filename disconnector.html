@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Disconnector: Process Simulator</title>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto Mono', monospace;
+            background: linear-gradient(135deg, #1a2332 0%, #0c1116 100%);
+            min-height: 100vh;
+            color: #e5e7eb;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .main-title {
+            font-family: 'VT323', monospace;
+            font-size: 4rem;
+            color: #00ff41;
+            text-shadow: 0 0 10px #00ff41, 0 0 20px #00ff41;
+            margin-bottom: 10px;
+            animation: floating 3s ease-in-out infinite;
+        }
+
+        @keyframes floating {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: #9ca3af;
+            margin-bottom: 10px;
+        }
+
+        .description {
+            font-size: 0.9rem;
+            color: #00ff41;
+            opacity: 0.8;
+        }
+
+        .stats-panel {
+            background: #374151;
+            border: 2px solid #4b5563;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            text-align: center;
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            color: #00ff41;
+            font-weight: bold;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: #9ca3af;
+            margin-top: 5px;
+        }
+
+        .simulator-ui {
+            background: #374151;
+            border: 4px solid #4b5563;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+        }
+
+        .scenario-briefing {
+            background: rgba(255, 170, 0, 0.1);
+            border: 2px dashed #fbbf24;
+            color: #fde047;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        .progress-section {
+            margin-bottom: 20px;
+        }
+
+        .progress-label {
+            font-size: 0.9rem;
+            color: #00ff41;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+
+        .progress-container {
+            width: 100%;
+            background: #1f2937;
+            border-radius: 20px;
+            height: 20px;
+            border: 2px solid #4b5563;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            background: #00ff41;
+            height: 100%;
+            border-radius: 18px;
+            transition: width 0.5s ease;
+            box-shadow: 0 0 10px #00ff41;
+        }
+
+        .terminal {
+            position: relative;
+            font-family: 'VT323', monospace;
+            background: linear-gradient(135deg, #0c1a26 0%, #0f1d2a 50%, #0c1a26 100%);
+            color: #00ff41;
+            text-shadow: 0 0 5px #00ff41, 0 0 10px #00ff41;
+            border: 2px solid #00ff41;
+            box-shadow: 0 0 20px rgba(0, 255, 65, 0.3);
+            border-radius: 6px;
+            padding: 20px;
+            height: 300px;
+            overflow-y: auto;
+            margin-bottom: 30px;
+        }
+
+        .terminal-text {
+            font-size: 1.5rem;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .scanline {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0.05) 50%, rgba(255,255,255,0));
+            background-size: 100% 4px;
+            animation: scan 7.5s linear infinite;
+        }
+
+        @keyframes scan {
+            from { background-position: 0 0; }
+            to { background-position: 0 -400px; }
+        }
+
+        .action-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            min-height: 120px;
+            margin-bottom: 30px;
+        }
+
+        .terminal-button {
+            background: rgba(0, 255, 65, 0.1);
+            color: #00ff41;
+            border: 2px solid #00ff41;
+            font-family: inherit;
+            font-weight: bold;
+            padding: 15px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: left;
+            font-size: 1rem;
+        }
+
+        .terminal-button:hover {
+            background: #00ff41;
+            color: #0c1a26;
+            box-shadow: 0 0 15px #00ff41;
+            transform: translateY(-2px);
+        }
+
+        .control-panel {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .help-panel {
+            background: #4b5563;
+            border: 2px solid #6b7280;
+            border-radius: 6px;
+            padding: 20px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .help-panel.show {
+            display: block;
+        }
+
+        .help-title {
+            color: #00ff41;
+            font-weight: bold;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+        }
+
+        .help-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .help-section h4 {
+            color: #fbbf24;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .help-section ul {
+            list-style: none;
+            color: #d1d5db;
+        }
+
+        .help-section li {
+            margin-bottom: 5px;
+            padding-left: 10px;
+        }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #374151;
+            border: 4px solid #00ff41;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            max-width: 500px;
+            margin: 20px;
+            box-shadow: 0 0 30px rgba(0, 255, 65, 0.3);
+        }
+
+        .modal-title {
+            font-family: 'VT323', monospace;
+            font-size: 3rem;
+            color: #00ff41;
+            text-shadow: 0 0 10px #00ff41;
+            margin-bottom: 20px;
+        }
+
+        .modal-message {
+            color: #d1d5db;
+            font-size: 1.1rem;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+
+        .shake {
+            animation: shake 0.5s;
+        }
+
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+
+        .blue-button {
+            color: #3b82f6 !important;
+            border-color: #3b82f6 !important;
+        }
+
+        .blue-button:hover {
+            background: #3b82f6 !important;
+            color: #0c1a26 !important;
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .main-title {
+                font-size: 2.5rem;
+            }
+
+            .stats-panel {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .action-panel {
+                grid-template-columns: 1fr;
+            }
+
+            .help-content {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1 class="main-title">[ THE DISCONNECTOR ]</h1>
+            <p class="subtitle">SYSTEM // SUPPLIER PROCESS SIMULATOR_v6.0</p>
+            <p class="description">Interactive training for MHHS disconnection processes</p>
+        </header>
+
+        <!-- Statistics Panel -->
+        <div class="stats-panel">
+            <div class="stat-item">
+                <div class="stat-number" id="scenarios-completed">0</div>
+                <div class="stat-label">COMPLETED</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number" id="success-rate">0%</div>
+                <div class="stat-label">SUCCESS RATE</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number" id="current-streak">0</div>
+                <div class="stat-label">STREAK</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number" id="random-events">0</div>
+                <div class="stat-label">EVENTS</div>
+            </div>
+        </div>
+
+        <!-- Simulator UI -->
+        <div class="simulator-ui">
+            <!-- Briefing -->
+            <div class="scenario-briefing" id="scenario-briefing">
+                Loading scenario...
+            </div>
+            
+            <!-- Progress Bar -->
+            <div class="progress-section">
+                <p class="progress-label">PROCESS COMPLETION:</p>
+                <div class="progress-container">
+                    <div class="progress-bar" id="progress-bar" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <!-- Terminal Screen -->
+            <div class="terminal" id="terminal">
+                <div class="terminal-text" id="terminal-text">System initializing...</div>
+                <div class="scanline"></div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="action-panel" id="action-panel">
+                <button class="terminal-button">Loading...</button>
+            </div>
+
+            <!-- Control Panel -->
+            <div class="control-panel">
+                <button id="new-scenario" class="terminal-button">NEW SCENARIO</button>
+                <button id="help-toggle" class="terminal-button blue-button">SHOW HELP</button>
+            </div>
+
+            <!-- Help Panel -->
+            <div class="help-panel" id="help-panel">
+                <h3 class="help-title">PROCESS REFERENCE:</h3>
+                <div class="help-content">
+                    <div class="help-section">
+                        <h4>Standard Flow:</h4>
+                        <ul>
+                            <li>1. Request Meter Removal (D0142)</li>
+                            <li>2. Request De-energisation (D0134)</li>
+                            <li>3. Formal Disconnection (D0132)</li>
+                            <li>4. Request Deactivation (CSS1900)</li>
+                        </ul>
+                    </div>
+                    <div class="help-section">
+                        <h4>Emergency Flow:</h4>
+                        <ul>
+                            <li>1. Request De-energisation (D0134)</li>
+                            <li>2. Formal Disconnection (D0132)</li>
+                            <li>3. Request Deactivation (CSS1900)</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Completion Modal -->
+        <div class="modal" id="completion-modal">
+            <div class="modal-content">
+                <h2 class="modal-title" id="modal-title">SCENARIO COMPLETE</h2>
+                <p class="modal-message" id="modal-message">Great work!</p>
+                <button id="reset-button" class="terminal-button">START NEW SCENARIO</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        console.log('Starting The Disconnector...');
+        
+        // Get DOM elements
+        const scenarioBriefing = document.getElementById('scenario-briefing');
+        const terminalText = document.getElementById('terminal-text');
+        const actionPanel = document.getElementById('action-panel');
+        const progressBar = document.getElementById('progress-bar');
+        const completionModal = document.getElementById('completion-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalMessage = document.getElementById('modal-message');
+        const resetButton = document.getElementById('reset-button');
+        const newScenarioButton = document.getElementById('new-scenario');
+        const helpToggle = document.getElementById('help-toggle');
+        const helpPanel = document.getElementById('help-panel');
+        const terminal = document.getElementById('terminal');
+
+        // Stats elements
+        const scenariosCompleted = document.getElementById('scenarios-completed');
+        const successRate = document.getElementById('success-rate');
+        const currentStreak = document.getElementById('current-streak');
+        const randomEvents = document.getElementById('random-events');
+
+        // Game variables
+        let currentStep = 0;
+        let activeScenario = {};
+        let stats = {
+            completed: 0,
+            attempts: 0,
+            streak: 0,
+            events: 0
+        };
+
+        // Scenario data
+        const scenarios = {
+            s1: {
+                briefing: "SCENARIO: A customer has called to request their meter be disconnected as the property is scheduled for demolition. Begin the standard disconnection process.",
+                steps: [
+                    { 
+                        type: 'player', 
+                        status: "System standby. A metering point needs to be disconnected. What is your first action?", 
+                        correctAction: "Request Meter Removal (D0142)", 
+                        options: ["Request De-energisation", "Formal Disconnection Request", "Request Meter Removal (D0142)"], 
+                        feedback: "ACTION SUCCESSFUL: D0142 sent to Metering Service." 
+                    },
+                    { 
+                        type: 'system', 
+                        status: "SYSTEM UPDATE: Metering Service confirms meter removed. System updated with new technical details (D0150/PUB-006)." 
+                    },
+                    { 
+                        type: 'player', 
+                        status: "Meter removal confirmed. The MPAN must now be de-energised. What is your next action?", 
+                        correctAction: "Request De-energisation (D0134)", 
+                        options: ["Request Deactivation", "Request De-energisation (D0134)", "Receive De-appointment"], 
+                        feedback: "ACTION SUCCESSFUL: D0134 sent." 
+                    },
+                    { 
+                        type: 'system', 
+                        status: "SYSTEM UPDATE: DIP confirms MPAN is de-energised (PUB-008). Ready for formal disconnection." 
+                    },
+                    { 
+                        type: 'player', 
+                        status: "MPAN is de-energised. Time to request the physical disconnection from the network.", 
+                        correctAction: "Formal Disconnection Request (D0132)", 
+                        options: ["Formal Disconnection Request (D0132)", "Request Meter Removal", "Manage Rejection"], 
+                        feedback: "ACTION SUCCESSFUL: D0132 sent to LDSO." 
+                    },
+                    { 
+                        type: 'system', 
+                        status: "SYSTEM UPDATE: LDSO has processed the request... no rejections filed... DIP publishes disconnection confirmation (PUB-009)." 
+                    },
+                    { 
+                        type: 'player', 
+                        status: "Disconnection is confirmed. To finalize, the registration must be deactivated.", 
+                        correctAction: "Request Deactivation (CSS1900)", 
+                        options: ["Request Deactivation (CSS1900)", "Receive De-appointment", "Identify Need"], 
+                        feedback: "ACTION SUCCESSFUL: CSS1900 sent to CSS." 
+                    },
+                    { 
+                        type: 'system', 
+                        status: "SYSTEM UPDATE: CSS confirms deactivation (CSS02370)." 
+                    },
+                    { 
+                        type: 'system', 
+                        status: "SYSTEM UPDATE: Final de-appointment notification received (PUB-037). All services are now de-appointed." 
+                    }
+                ]
+            },
+            s2: {
+                briefing: "SCENARIO: URGENT! The LDSO has performed an emergency disconnection and meter removal at a property due to a safety issue. Your system shows the meter is still active. You must now update the systems correctly.",
+                steps: [
+                    { 
+                        type: 'player', 
+                        status: "LDSO confirms meter already removed. What is your first action to update the system?", 
+                        correctAction: "Request De-energisation (D0134)", 
+                        options: ["Request Meter Removal (D0142)", "Request De-energisation (D0134)", "Formal Disconnection Request (D0132)"], 
+                        feedback: "ACTION SUCCESSFUL: D0134 sent to correctly log the de-energisation status." 
+                    },
+                    { 
+                        type: 'system', 
+                        status: "SYSTEM UPDATE: DIP confirms MPAN is de-energised (PUB-008). Ready for formal disconnection." 
+                    },
+                    { 
+                        type: 'player', 
+                        status: "MPAN is de-energised. Although the LDSO has done the physical work, you must send a formal D0132 to align the systems and trigger the official disconnection publication.", 
+                        correctAction: "Formal Disconnection Request (D0132)", 
+                        options: ["Formal Disconnection Request (D0132)", "Request Deactivation (CSS1900)", "Close request"], 
+                        feedback: "ACTION SUCCESSFUL: D0132 sent to LDSO to create the official data trail." 
+                    },
+                    { 
+                        type: 'system', 
+                        status: "SYSTEM UPDATE: LDSO system acknowledges D0132... DIP publishes disconnection confirmation (PUB-009)." 
+                    },
+                    { 
+                        type: 'player', 
+                        status: "Disconnection is confirmed. To finalize, the registration must be deactivated.", 
+                        correctAction: "Request Deactivation (CSS1900)", 
+                        options: ["Request Deactivation (CSS1900)", "Receive De-appointment", "Identify Need"], 
+                        feedback: "ACTION SUCCESSFUL: CSS1900 sent to CSS." 
+                    },
+                    { 
+                        type: 'system', 
+                        status: "SYSTEM UPDATE: CSS confirms deactivation (CSS02370)." 
+                    },
+                    { 
+                        type: 'system', 
+                        status: "SYSTEM UPDATE: Final de-appointment notification received (PUB-037). All services are now de-appointed." 
+                    }
+                ]
+            },
+            s3: {
+                briefing: "SCENARIO: A request has come in to disconnect a property. The notes simply say 'Customer wants change'. Investigate and determine the correct course of action.",
+                steps: [
+                    { 
+                        type: 'player', 
+                        status: "Reason for request is unclear. What is the correct first step?", 
+                        correctAction: "Investigate reason with customer", 
+                        options: ["Request Meter Removal (D0142)", "Investigate reason with customer", "Formal Disconnection Request (D0132)"], 
+                        feedback: "ACTION SUCCESSFUL: You contacted the customer. They confirmed they don't want to be disconnected, they just want a smart meter installed." 
+                    },
+                    { 
+                        type: 'player', 
+                        status: "Customer wants a smart meter, not a disconnection. What is the final action for this request?", 
+                        correctAction: "Close request & initiate 'Change of Meter'", 
+                        options: ["Continue with disconnection", "Close request & initiate 'Change of Meter'", "Request De-energisation (D0134)"], 
+                        feedback: "Correct action identified. Disconnection process terminated.", 
+                        end: { 
+                            title: "// SCENARIO COMPLETE //", 
+                            message: "You correctly identified that a full disconnection was not required. A 'Change of Meter' process should be used instead. Excellent work." 
+                        } 
+                    }
+                ]
+            }
+        };
+        
+        // Functions
+        function typeWriter(text, callback) {
+            terminalText.textContent = '';
+            let i = 0;
+            function type() {
+                if (i < text.length) {
+                    terminalText.textContent += text.charAt(i);
+                    terminal.scrollTop = terminal.scrollHeight;
+                    i++;
+                    setTimeout(type, 20);
+                } else if (callback) {
+                    callback();
+                }
+            }
+            type();
+        }
+
+        function updateStats() {
+            scenariosCompleted.textContent = stats.completed;
+            successRate.textContent = stats.attempts > 0 ? Math.round((stats.completed / stats.attempts) * 100) + '%' : '0%';
+            currentStreak.textContent = stats.streak;
+            randomEvents.textContent = stats.events;
+        }
+
+        function renderStep() {
+            console.log('Rendering step:', currentStep);
+            if (currentStep >= activeScenario.steps.length) return;
+
+            const step = activeScenario.steps[currentStep];
+            const progressPercentage = (currentStep / (activeScenario.steps.length - 1)) * 100;
+            progressBar.style.width = progressPercentage + '%';
+
+            if (step.type === 'player') {
+                typeWriter('//: STATUS: ' + step.status, function() {
+                    actionPanel.innerHTML = '';
+                    const shuffledOptions = step.options.slice().sort(() => Math.random() - 0.5);
+                    shuffledOptions.forEach(function(optionText) {
+                        const button = document.createElement('button');
+                        button.textContent = '> ' + optionText;
+                        button.className = 'terminal-button';
+                        button.onclick = function() { handleAction(optionText); };
+                        actionPanel.appendChild(button);
+                    });
+                });
+            } else if (step.type === 'system') {
+                actionPanel.innerHTML = '';
+                typeWriter('//: INCOMING TRANSMISSION...\n\n' + step.status, function() {
+                    setTimeout(function() {
+                        currentStep++;
+                        if (currentStep >= activeScenario.steps.length) {
+                            progressBar.style.width = '100%';
+                            stats.completed++;
+                            stats.streak++;
+                            updateStats();
+                            showCompletionModal("// PROCESS COMPLETE //", "You have successfully navigated the disconnection process. System ready for new cycle.");
+                        } else {
+                            renderStep();
+                        }
+                    }, 3000);
+                });
+            }
+        }
+
+        function handleAction(actionText) {
+            console.log('Action:', actionText);
+            const step = activeScenario.steps[currentStep];
+            if (actionText === step.correctAction) {
+                if (step.end) {
+                    typeWriter('//: SUCCESS: ' + step.feedback, function() {
+                        progressBar.style.width = '100%';
+                        stats.completed++;
+                        stats.streak++;
+                        updateStats();
+                        showCompletionModal(step.end.title, step.end.message);
+                    });
+                    return;
+                }
+                typeWriter('//: SUCCESS: ' + step.feedback, function() {
+                    currentStep++;
+                    setTimeout(renderStep, 2000);
+                });
+            } else {
+                stats.streak = 0;
+                updateStats();
+                typeWriter('//: ERROR: Invalid action. Request denied. Check protocols and try again.');
+                terminal.classList.add('shake');
+                setTimeout(function() {
+                    terminal.classList.remove('shake');
+                }, 500);
+            }
+        }
+
+        function showCompletionModal(title, message) {
+            modalTitle.textContent = title;
+            modalMessage.textContent = message;
+            completionModal.classList.add('show');
+        }
+
+        function initializeGame() {
+            console.log('Initializing game...');
+            completionModal.classList.remove('show');
+            
+            const scenarioKeys = Object.keys(scenarios);
+            const randomScenarioKey = scenarioKeys[Math.floor(Math.random() * scenarioKeys.length)];
+            activeScenario = JSON.parse(JSON.stringify(scenarios[randomScenarioKey]));
+            
+            currentStep = 0;
+            stats.attempts++;
+            scenarioBriefing.textContent = activeScenario.briefing;
+            updateStats();
+            renderStep();
+        }
+
+        // Event listeners
+        resetButton.onclick = initializeGame;
+        newScenarioButton.onclick = initializeGame;
+
+        helpToggle.onclick = function() {
+            if (helpPanel.classList.contains('show')) {
+                helpPanel.classList.remove('show');
+                helpToggle.textContent = 'SHOW HELP';
+            } else {
+                helpPanel.classList.add('show');
+                helpToggle.textContent = 'HIDE HELP';
+            }
+        };
+
+        // Start the game
+        console.log('Page loaded, starting game...');
+        initializeGame();
+    </script>
+</body>
+</html>
